@@ -85,6 +85,7 @@ def image_processing(file, filepath=False, DEBUG = False):
     prev_info = True
     # If the fit is not valid, use windowing techinque which is in histogram_pixel function
     if left_coeffs is None or not valid_fit(left_fit, right_fit):
+        # print('recalculate')
         prev_info = False
         left_coeffs, right_coeffs, left_fit, right_fit = histogram_pixel(warped)
     
@@ -138,7 +139,7 @@ def image_processing(file, filepath=False, DEBUG = False):
         print("Right lane curve radius: ", right_curveradm)
         
     # Det vehicle position wrt center of lane
-    lane_center = (right_fit[-1] - left_fit[-1])#/2
+    lane_center = (right_fit[-1] - left_fit[-1])/2
     car_pos = image.shape[1] // 2
     centre = xm_per_pix* abs(lane_center - car_pos)
     if DEBUG:

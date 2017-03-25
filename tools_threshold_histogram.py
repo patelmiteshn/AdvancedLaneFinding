@@ -414,6 +414,6 @@ def not_same_line(left, right):
     return abs(left[2] - right[2]) > 1e-2
 
 def valid_fit(left, right):
-    checks_passed = [ roughly_parallel(left, right, 0.95), not_same_line(left, right)]
-    # print('checks passed', checks_passed)
+    checks_passed = [ roughly_parallel(left, right, 0.99), similar_curvature(left, right, 1.0), not_same_line(left, right)]
+    print('checks passed', checks_passed)
     return all(checks_passed)

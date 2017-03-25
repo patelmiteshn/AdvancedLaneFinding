@@ -4,7 +4,7 @@ from moviepy.editor import VideoFileClip
 from IPython.display import HTML
 from image_processing_pipeline import *
 
-output = 'project_output_colour_frommac.mp4'
+output = 'project_output_colour_frommac_curvecheck.mp4'
 clip1 = VideoFileClip("project_video.mp4")
 # output = 'harder_challenge_video_op.mp4'
 # clip1 = VideoFileClip("harder_challenge_video.mp4")
