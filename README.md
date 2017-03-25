@@ -73,6 +73,10 @@ The last step was to project the detected lane in perspective image back to the 
 
 Thanks to numerious articles my pkern, acfillipo that helped me to gett the correct drawing tools in place.
 
+### Results
+
+* The video of the pipeline which detects the vehicle can be found [![here](https://www.youtube.com/watch?v=AEMsz-M8xyc/0.jpg)](https://www.youtube.com/watch?v=AEMsz-M8xyc)
+
 ### Self Reflection
 
 Working on this project has by far been one of the best hands on experience with lots of core OpenCV functionality and has helped me improve my understanding of core computer vision techniques. Putting this end to end pipeline to work has been challenging and fun at the same time. 

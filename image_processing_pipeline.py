@@ -75,15 +75,37 @@ def image_processing(file, filepath=False, DEBUG = False):
 
     # Generate perspective image for track lanes
     warped = cv2.warpPerspective(combined_binary, M, (imshape[1], imshape[0]), flags=cv2.INTER_LINEAR)
-    # Perform histogram based line tracking
-    leftx, lefty, rightx, righty = histogram_pixels_v2(warped, horizontal_offset=40)    
     
+    ### if lane is valid then use the previous coefficients
+    left_coeffs, right_coeffs, left_fit, right_fit = \
+    Utilize_previous_coeffs(warped, prev_left_coeffs, prev_right_coeffs, 100)
+    
+    
+    ############# Logic which utilizes previous coefficients if they are valid else recompute the coefficients
+    prev_info = True
+    # If the fit is not valid, use windowing techinque which is in histogram_pixel function
+    if left_coeffs is None or not valid_fit(left_fit, right_fit):
+        prev_info = False
+        left_coeffs, right_coeffs, left_fit, right_fit = histogram_pixel(warped)
+    
+    # Store fit for next prediction
+    if prev_info or valid_fit(left_fit, right_fit):
+        prev_left_coeffs, prev_right_coeffs = left_coeffs, right_coeffs
+    else:
+        left_coeffs, right_coeffs = prev_left_coeffs, prev_right_coeffs
+    
+#     # Perform histogram based line tracking
+# #     leftx, lefty, rightx, righty = histogram_pixels_v2(warped, horizontal_offset=40)
+    
+    lefty = np.linspace(0, warped.shape[0]-1, warped.shape[0] )
+    righty = np.linspace(0, warped.shape[0]-1, warped.shape[0] )
+    
+
     # fit polynomial to teh detected lanes 
-    left_fit, left_coeffs = fit_second_order_poly(lefty, leftx, return_coeffs=True)
-    right_fit, right_coeffs = fit_second_order_poly(righty, rightx, return_coeffs=True)
     if DEBUG:
         print("Left coeffs:", left_coeffs)
         print("Right coeffs: ", right_coeffs)
+        print("Left_fit shape: ",  left_fit.shape)
         # Plot data
         plt.plot(left_fit, lefty, color='green', linewidth=3)
         plt.plot(right_fit, righty, color='green', linewidth=3)
@@ -93,30 +115,34 @@ def image_processing(file, filepath=False, DEBUG = False):
     # Determine curvature of the lane
     # Define y-value where we want radius of curvature
     # I'll choose the maximum y-value, corresponding to the bottom of the image
-    y_eval = 500
+    y_eval = 700
     left_curverad = np.absolute(((1 + (2 * left_coeffs[0] * y_eval + left_coeffs[1])**2) ** 1.5) \
                     /(2 * left_coeffs[0]))
     right_curverad = np.absolute(((1 + (2 * right_coeffs[0] * y_eval + right_coeffs[1]) ** 2) ** 1.5) \
                      /(2 * right_coeffs[0]))
-    curvature = (left_curverad + right_curverad) / 2
-    min_curverad = min(left_curverad, right_curverad)
+    
+    # covert pixel to meters
+    ym_per_pix = 30/720
+    xm_per_pix = 3.7/700
+    
+    left_fit_cr = np.polyfit(lefty*ym_per_pix, left_fit*xm_per_pix, 2)
+    right_fit_cr = np.polyfit(righty*ym_per_pix, right_fit*xm_per_pix, 2)
+    # Calculate the new radii of curvature
+    left_curveradm = ((1 + (2*left_fit_cr[0]*y_eval*ym_per_pix + left_fit_cr[1])**2)**1.5) / np.absolute(2*left_fit_cr[0])
+    right_curveradm = ((1 + (2*right_fit_cr[0]*y_eval*ym_per_pix + right_fit_cr[1])**2)**1.5) / np.absolute(2*right_fit_cr[0])
+    
+    curvature = (left_curveradm + right_curveradm) / 2
+    min_curverad = curvature#min(left_curveradm, right_curveradm)
     if DEBUG:
-        print("Left lane curve radius: ", left_curverad)
-        print("Right lane curve radius: ", right_curverad)
-    
-
-    # TODO: if plausible parallel, continue. Else don't make `curvature_checked` = True
-    if not plausible_curvature(left_curverad, right_curverad) or \
-        not plausible_continuation_of_traces(left_coeffs, right_coeffs, prev_left_coeffs, prev_right_coeffs):
-            if prev_left_coeffs is not None and prev_right_coeffs is not None:
-                left_coeffs = prev_left_coeffs
-                right_coeffs = prev_right_coeffs
-
-    prev_left_coeffs = left_coeffs
-    prev_right_coeffs = right_coeffs
-    
-    # Det vehicle position wrt centre
-    centre = center(719, left_coeffs, right_coeffs)
+        print("Left lane curve radius: ", left_curveradm)
+        print("Right lane curve radius: ", right_curveradm)
+        
+    # Det vehicle position wrt center of lane
+    lane_center = (right_fit[-1] - left_fit[-1])#/2
+    car_pos = image.shape[1] // 2
+    centre = xm_per_pix* abs(lane_center - car_pos)
+    if DEBUG:
+        print("car position: ", car_pos, " lane center: ", lane_center,  " car position from center: ", centre, " m")
         
     # Draw lane boundries on th original image
     polyfit_left = draw_poly(blank_canvas, lane_poly, left_coeffs, 30)
@@ -135,8 +161,6 @@ def image_processing(file, filepath=False, DEBUG = False):
         print("polyfit shape: ", polyfit_drawn.shape)
         plt.imshow(trace)
     
-    
-
     combined_img = cv2.add(lane_lines, image)
     add_figures_to_image(combined_img, curvature=curvature, 
                          vehicle_position=centre, 
@@ -146,7 +170,7 @@ def image_processing(file, filepath=False, DEBUG = False):
     
     if DEBUG:
         plt.imshow(combined_img)
-    
+        plt.show()
     return combined_img
 
-# combined_img = image_pipeline("test_images/test1.jpg", filepath=True)
+# combined_img = image_processing("../test_images/test1.jpg", filepath=True)

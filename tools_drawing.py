@@ -108,16 +108,16 @@ def add_figures_to_image(img, curvature, vehicle_position, min_curvature, left_c
     :param img:
     """
     # Convert from pixels to meters
-    vehicle_position = vehicle_position / 12800 * 3.7
-    curvature = curvature / 128 * 3.7
-    min_curvature = min_curvature / 128 * 3.7
-
+    vehicle_position = vehicle_position #/ 700 * 3.7
+    curvature = curvature #/ 700 * 3.7
+    # min_curvature = min_curvature / 1280 * 3.7
+    # print('vehicle position',vehicle_position)
     font = cv2.FONT_HERSHEY_SIMPLEX
     cv2.putText(img, 'Radius of Curvature = %d(m)' % curvature, (50, 50), font, 1, (255, 255, 255), 2)
     left_or_right = "left" if vehicle_position < 0 else "right"
     cv2.putText(img, 'Vehicle is %.2fm %s of center' % (np.abs(vehicle_position), left_or_right), (50, 100), font, 1,
                 (255, 255, 255), 2)
-    cv2.putText(img, 'Min Radius of Curvature = %d(m)' % min_curvature, (50, 150), font, 1, (255, 255, 255), 2)
+    # cv2.putText(img, 'Min Radius of Curvature = %d(m)' % min_curvature, (50, 150), font, 1, (255, 255, 255), 2)
     cv2.putText(img, 'Left poly coefficients = %.3f %.3f %.3f' % (left_coeffs[0], left_coeffs[1], left_coeffs[2]), (50, 200), font, 1, (255, 255, 255), 2)
     cv2.putText(img, 'Right poly coefficients = %.3f %.3f %.3f' % (right_coeffs[0], right_coeffs[1], right_coeffs[2]), (50, 250), font, 1, (255, 255, 255), 2)
 
