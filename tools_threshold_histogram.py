@@ -227,6 +227,21 @@ def histogram_pixels_v2(warped_thresholded_image, offset=50, steps=6,
 
     return collapse_into_single_arrays(left_x, left_y, right_x, right_y)
 
+def get_curvature(x, y):
+    """
+    Given a set of X and Y values for a 2nd degree polynomial, finds the curvature of the lines in world space.
+    :param x: X coords
+    :param y: Y coords
+    :return: Curvature in meters
+    """
+    ym_per_pix = 30/720
+    xm_per_pix = 3.7/700
+    y_eval = np.max(y)
+
+    a, b, c = np.polyfit(y*ym_per_pix, x*xm_per_pix, 2)
+    curvature = (1 + (2*a*y_eval*ym_per_pix + b)**2)**1.5 / abs(2*a)
+    return curvature
+
 
 def histogram_pixel(binary_warped, nwindows = 9, margin = 100, minpix = 50):
 
@@ -311,18 +326,18 @@ def histogram_pixel(binary_warped, nwindows = 9, margin = 100, minpix = 50):
     left_fitx = left_fit[0]*ploty**2 + left_fit[1]*ploty + left_fit[2]
     right_fitx = right_fit[0]*ploty**2 + right_fit[1]*ploty + right_fit[2]
     
-#     # Determine curvature of the lane
-#     # Define y-value where we want radius of curvature
-#     # I'll choose the maximum y-value, corresponding to the bottom of the image
-#     y_eval = 700
-#     left_curverad = np.absolute(((1 + (2 * left_fit[0] * y_eval + left_fit[1])**2) ** 1.5) \
-#                     /(2 * left_coeffs[0]))
-#     right_curverad = np.absolute(((1 + (2 * right_fit[0] * y_eval + right_fit[1]) ** 2) ** 1.5) \
-#                      /(2 * right_coeffs[0]))
-#     left_curverad = get_curvature(leftx, lefty)
-#     right_curverad = get_curvature(rightx, righty)
+    # Determine curvature of the lane
+    # Define y-value where we want radius of curvature
+    # I'll choose the maximum y-value, corresponding to the bottom of the image
+    y_eval = 700
+    left_curverad = np.absolute(((1 + (2 * left_fit[0] * y_eval + left_fit[1])**2) ** 1.5) \
+                    /(2 * left_fit[0]))
+    right_curverad = np.absolute(((1 + (2 * right_fit[0] * y_eval + right_fit[1]) ** 2) ** 1.5) \
+                     /(2 * right_fit[0]))
+    left_curverad = get_curvature(leftx, lefty)
+    right_curverad = get_curvature(rightx, righty)
     
-    return left_fit, right_fit, left_fitx, right_fitx#, left_curverad, right_curverad #left_lane_inds, right_lane_inds, out_img
+    return left_fit, right_fit, left_fitx, right_fitx, left_curverad, right_curverad #left_lane_inds, right_lane_inds, out_img
 
 def Utilize_previous_coeffs(binary_warped, left_fit, right_fit, margin = 100, DEBUG = False):
     
@@ -351,16 +366,16 @@ def Utilize_previous_coeffs(binary_warped, left_fit, right_fit, margin = 100, DE
     left_fitx = left_fit[0]*ploty**2 + left_fit[1]*ploty + left_fit[2]
     right_fitx = right_fit[0]*ploty**2 + right_fit[1]*ploty + right_fit[2]
     
-    #     # Determine curvature of the lane
-#     # Define y-value where we want radius of curvature
-#     # I'll choose the maximum y-value, corresponding to the bottom of the image
-#     y_eval = 700
-#     left_curverad = np.absolute(((1 + (2 * left_fit[0] * y_eval + left_fit[1])**2) ** 1.5) \
-#                     /(2 * left_coeffs[0]))
-#     right_curverad = np.absolute(((1 + (2 * right_fit[0] * y_eval + right_fit[1]) ** 2) ** 1.5) \
-#                      /(2 * right_coeffs[0]))
-#     left_curverad = get_curvature(leftx, lefty)
-#     right_curverad = get_curvature(rightx, righty)
+    # Determine curvature of the lane
+    # Define y-value where we want radius of curvature
+    # I'll choose the maximum y-value, corresponding to the bottom of the image
+    y_eval = 700
+    left_curverad = np.absolute(((1 + (2 * left_fit[0] * y_eval + left_fit[1])**2) ** 1.5) \
+                    /(2 * left_fit[0]))
+    right_curverad = np.absolute(((1 + (2 * right_fit[0] * y_eval + right_fit[1]) ** 2) ** 1.5) \
+                     /(2 * right_fit[0]))
+    left_curverad = get_curvature(leftx, lefty)
+    right_curverad = get_curvature(rightx, righty)
     
     #### Visualization
     if DEBUG:
@@ -390,30 +405,46 @@ def Utilize_previous_coeffs(binary_warped, left_fit, right_fit, margin = 100, DE
         plt.xlim(0, 1280)
         plt.ylim(720, 0)
     
-    return left_fit, right_fit, left_fitx, right_fitx#, left_curverad, right_curverad
+    return left_fit, right_fit, left_fitx, right_fitx, left_curverad, right_curverad
 
+    
 '''
 check for lane similarity from coefficients
 '''
 
 def roughly_parallel(left, right, percent):
     similar = True
-    for l_coeff, r_coeff in zip(map(abs, left[:2]), map(abs, right[:2])):
+#     cnt = 0
+#     l_coeff = np.max(left)
+#     r_coeff = np.max(right)
+    for l_coeff, r_coeff in zip(map(abs, left[:5]), map(abs, right[:5])):
+#         print('cnt values: ', cnt)
+#         cnt = cnt + 1
         similar &= abs(l_coeff - r_coeff)/max(l_coeff, r_coeff) < percent
+        if 0:
+            print('roughly_parallel left coeff are: ', l_coeff)
+            print('roughly_parallel right coeff are: ', r_coeff)
+            print('roughly_parallel similarity score: ', similar)
     return similar
 
 
-def similar_curvature(left, right, percent):
-    min = np.min([left, right])
-    max = np.max([left, right])
-    return min/max > percent if max < 1000 else True
+def similar_curvature(left, right, percent=0.2):
+
+    minVal = np.min([left, right])
+    maxVal = np.max([left, right])
+
+    return minVal/maxVal > percent if maxVal < 1000 else True
 
 
 def not_same_line(left, right):
     
-    return abs(left[2] - right[2]) > 1e-2
+    # print('left and right diff:', abs(left[2] - right[2]))
+    return abs(left[2] - right[2]) > 800#1e-2
 
-def valid_fit(left, right):
-    checks_passed = [ roughly_parallel(left, right, 0.99), similar_curvature(left, right, 1.0), not_same_line(left, right)]
-    print('checks passed', checks_passed)
+def valid_fit(left, right, left_fit_cr, right_fit_cr):
+    checks_passed = [ roughly_parallel(left, right, 0.85), similar_curvature(left_fit_cr, right_fit_cr, 0.95), not_same_line(left, right)]
+    # print('checks passed', checks_passed)
+#     for checks in checks_passed:
+#         if checks is True:
+#             return True
     return all(checks_passed)
